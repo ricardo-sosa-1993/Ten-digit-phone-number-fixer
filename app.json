@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "ten-digit-phone-number-fixer",
+    "name": "Ten Digit Fixer",
     "slug": "ten-digit-phone-number-fixer",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -17,7 +17,13 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ricardososa.tendigitfixer",
+      "buildNumber": "1.0.0"
+    },
+    "android": {
+      "package": "com.ricardososa.tendigitfixer",
+      "versionCode": 1
     },
     "web": {
       "favicon": "./assets/favicon.png"
