@@ -20,7 +20,7 @@ export default function ContactList({ contacts, onSelect }: Props) {
             borderBottomWidth: 1,
           }}
         >
-          <Text>{contact.name}</Text>
+          <Text>{`${contact.givenName} ${contact.familyName}`}</Text>
           <CheckBox
             onPress={() => onSelect(contact.key)}
             checked={contact.selected}

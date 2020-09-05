@@ -1,14 +1,12 @@
 import React, { useEffect, useState } from "react";
-import * as Contacts from "expo-contacts";
+import { PermissionsAndroid } from "react-native";
+import Contacts from "react-native-contacts";
 import ContactList from "./ContactList";
 import { View, Dimensions } from "react-native";
 import { Text, Button } from "native-base";
 
-interface Contact {
+interface Contact extends Contacts.Contact {
   key: string;
-  id: string;
-  name: string;
-  phoneNumbers: Contacts.PhoneNumber[];
   selected: boolean;
 }
 
@@ -17,46 +15,45 @@ export default function MainPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    initContacts();
+    fetchContacts();
   }, []);
 
-  const initContacts = async () => {
-    const newContacts = await fetchContacts();
-    setContacts(newContacts);
-  };
-
   const fetchContacts = async () => {
-    const { status } = await Contacts.requestPermissionsAsync();
+    await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.READ_CONTACTS,
+      {
+        title: "Contactos",
+        message: "Necesitamos ver tus contactos",
+        buttonPositive: "Acepta :)",
+      }
+    );
 
-    if (status === "granted") {
-      const { data } = await Contacts.getContactsAsync({
-        fields: [Contacts.Fields.Name, Contacts.Fields.PhoneNumbers],
-      });
+    Contacts.getAll((err, contacts) => {
+      if (err === "denied") {
+        // error
+      } else {
+        const newContacts = contacts
+          .filter((newContact) => {
+            const hasInvalidPhoneNumber =
+              newContact.phoneNumbers &&
+              newContact.phoneNumbers.find(
+                (phoneNumber) =>
+                  phoneNumber.number &&
+                  phoneNumber.number.replace(/-| /g, "").length > 10
+              );
+            return !!hasInvalidPhoneNumber;
+          })
+          .map((newContact) => {
+            return {
+              ...newContact,
+              key: newContact.recordID,
+              selected: false,
+            };
+          });
 
-      const newContacts = data
-        .filter((newContact) => {
-          const hasInvalidPhoneNumber =
-            newContact.phoneNumbers &&
-            newContact.phoneNumbers.find(
-              (phoneNumber) =>
-                phoneNumber.number &&
-                phoneNumber.number.replace(/-| /g, "").length > 10
-            );
-          return !!hasInvalidPhoneNumber;
-        })
-        .map((newContact) => {
-          return {
-            key: newContact.id,
-            id: newContact.id,
-            name: newContact.name,
-            phoneNumbers: newContact.phoneNumbers || [],
-            selected: false,
-          };
-        });
-
-      return newContacts;
-    }
-    return [];
+        setContacts(newContacts);
+      }
+    });
   };
 
   const onContactSelect = (key: string) => {
@@ -75,35 +72,52 @@ export default function MainPage() {
   };
 
   const onUpdateContacts = async () => {
+    await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.WRITE_CONTACTS,
+      {
+        title: "Contactos",
+        message: "Necesitamos editar tus contactos",
+        buttonPositive: "Acepta :)",
+      }
+    );
     setLoading(true);
     const selectedContacts = contacts.filter((contact) => contact.selected);
 
     for (let i = 0; i < selectedContacts.length; i++) {
       const newNumbers = selectedContacts[i].phoneNumbers.map(
         (phoneNumber) => ({
-          // ...phoneNumber,
+          ...phoneNumber,
           number:
             phoneNumber.number &&
             phoneNumber.number.replace(/-| /g, "").substr(-10),
         })
       );
-      // @ts-ignore
-      // const contact: Contacts.Contact = {
-      //   id: selectedContacts[i].id,
-      //   phoneNumbers: newNumbers,
-      // };
-      // @ts-ignore
-      await Contacts.presentFormAsync(selectedContacts[i].id, {
-        [Contacts.Fields.PhoneNumbers]: newNumbers,
-      });
+
+      const newContact = {
+        ...selectedContacts[i],
+        phoneNumbers: newNumbers
+      };
+
+      console.log('goin to update ', newContact);
+
+      Contacts.deleteContact(selectedContacts[i], (err) => {
+        if (err) {
+          throw err;
+        }
+        // contact deleted
+      })
+
+      Contacts.addContact(newContact, (err) => {
+        if (err) throw err;
+        // save successful
+      })
     }
-    const newContacts = await fetchContacts();
-    setContacts(newContacts);
+    fetchContacts();
     setLoading(false);
   };
 
   if (loading) {
-    <Text>Loading</Text>;
+    <Text>Cargando...</Text>;
   }
 
   if (contacts.length === 0) {
